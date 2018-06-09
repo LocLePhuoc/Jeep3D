@@ -282,7 +282,7 @@ void Wheel::CreateTyrePart1(float radiusMax, float radiusMin,float widthMax,floa
 		float anpha1 = atan(z0 / x0);
 		float phi1 = anpha1 - PI / 4;
 		float delta = x0 / (numVertsParabol - 1);
-		float insertY = dWidth / (numVertsCircle-1);
+		float insertY = dWidth / (numVertsCircle - 1);
 		int numVertsOnOneFace = numVertsCircle + numVertsParabol + 1;
 		numVerts = 2 * numVertsOnOneFace + additionVerts;
 		pt = new Point3[numVerts];
@@ -291,7 +291,7 @@ void Wheel::CreateTyrePart1(float radiusMax, float radiusMin,float widthMax,floa
 			int index = i;
 			pt[index].x = radius * cos(PI / 4 + phi1 / numVertsCircle * i);
 			pt[index].z = radius * sin(PI / 4 + phi1 / numVertsCircle * i);
-			pt[index].y = width+ insertY;
+			pt[index].y = width + dWidth- insertY*i;
 		}
 		//vertex on Parabol
 		for (int i = 0; i < numVertsParabol; i++) {
@@ -323,43 +323,43 @@ void Wheel::CreateTyrePart1(float radiusMax, float radiusMin,float widthMax,floa
 		float x1 = sqrt(radius*radius / 2);
 		for (int i = 0; i < additionVerts; i++) {
 			int index = i + 2 * numVertsOnOneFace;
-			pt[index].x = x1-x1 / (numVertsParabol - 1)*i;
+			pt[index].x = x1 - x1 / (numVertsParabol - 1)*i;
 			pt[index].z = pt[index].x;
-			pt[index].y = width+ dWidth;
+			pt[index].y = width + dWidth;
 		}
 
 
-
-		numFaces = numVertsOnOneFace - 2 + additionVerts ;
+		//face
+		numFaces = numVertsOnOneFace - 2 + additionVerts;
 		face = new Face[numFaces];
 		//faces around
 		for (int i = 0; i < numVertsOnOneFace - 2; i++) {
 			face[i].nVerts = 4;
 			face[i].vert = new VertexID[face[i].nVerts];
 			face[i].vert[0].vertIndex = i;
-			face[i].vert[1].vertIndex = i + numVertsOnOneFace;
+			face[i].vert[1].vertIndex = i + 1;
 			face[i].vert[2].vertIndex = i + numVertsOnOneFace + 1;
-			face[i].vert[3].vertIndex = i + 1;
+			face[i].vert[3].vertIndex = i + numVertsOnOneFace;
 			for (int m = 0; m < face[i].nVerts; m++)
 				face[i].vert[m].colorIndex = 0;
 		}
 		//Top Faces
-		for (int i = 0; i < additionVerts-1; i++) {
+		for (int i = 0; i < additionVerts - 1; i++) {
 			int index = numVertsOnOneFace - 2 + i;
 			face[index].nVerts = 4;
 			face[index].vert = new VertexID[face[index].nVerts];
 			face[index].vert[0].vertIndex = numVertsCircle + i;
-			face[index].vert[1].vertIndex = numVertsCircle + i + 1;
+			face[index].vert[1].vertIndex = i + numVertsOnOneFace * 2;
 			face[index].vert[2].vertIndex = i + numVertsOnOneFace * 2 + 1;
-			face[index].vert[3].vertIndex = i + numVertsOnOneFace * 2;
+			face[index].vert[3].vertIndex = numVertsCircle + i + 1;
 			for (int m = 0; m < face[index].nVerts; m++)
 				face[index].vert[m].colorIndex = 0;
 		}
 
-		face[numFaces-1].nVerts = numVertsCircle+1;
+		face[numFaces - 1].nVerts = numVertsCircle + 1;
 		face[numFaces - 1].vert = new VertexID[face[numFaces - 1].nVerts];
 		for (int i = 0; i <= numVertsCircle; i++) {
-			face[numFaces - 1].vert[i].vertIndex = i;
+			face[numFaces - 1].vert[numVertsCircle-i].vertIndex = i;
 		}
 		for (int i = 0; i < face[numFaces - 1].nVerts; i++)
 			face[numFaces - 1].vert[i].colorIndex = 0;

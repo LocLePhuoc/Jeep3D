@@ -17,9 +17,18 @@ Vector3 Vector3::cross(Vector3 b)
 	return c;
 }
 
+Vector3 Vector3::operator + (Vector3 b) {
+	Vector3 add(x+b.x, y+b.y, z+b.z);
+	return add;
+}
+
 float Vector3::dot(Vector3 b)
 {
 	return x*b.x + y*b.y + z*b.z;
+}
+float Vector3::magnitude()
+{
+	return sqrt(x * x + y * y + z * z);
 }
 void Vector3::normalize()
 {

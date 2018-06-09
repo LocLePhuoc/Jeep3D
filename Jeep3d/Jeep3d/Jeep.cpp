@@ -7,7 +7,8 @@
 #include "supportClass.h"
 #include "Mesh.h"
 #include "Wheel.h"
-#define D2G 3.14159/180
+#include <time.h>
+#define D2G (3.14159/180)
 
 #define PI			3.1415926
 using namespace std;
@@ -22,7 +23,7 @@ float alpha = 45;
 float beta = 45;
 float deltaAngle = 5;
 float dR = 0.2;
-float Radius = 50;
+float Radius = 600;
 float orthorScaler = 3;
 
 GLfloat angle;
@@ -116,6 +117,28 @@ float zCoord;
 //obstacles
 Mesh pillarObstacle;
 
+//////////////car animation////////////////
+clock_t lastTime;
+#define METERTOUNIT (4.5*3/0.5)
+float wheelRadius = wheelScaleFactor * 3;
+float vehicleL = 25;
+float vehicleW = wheelAxisLength;
+float vehicleSteerAngel = 0;
+float frontLeftWheelSteerAngel = 0;
+float frontRightWheelSteerAngel = 0;
+float rearWheelSteerAngel = 0;
+float frontLeftWheelRotateAngel = 0;
+float frontRightWheelRotateAngel = 0;
+float rearWheelRotateAngel = 0;
+Vector3 forwardVector = Vector3(1.0, 0, 0);
+Vector3 vehiclePosition = Vector3(0.0, 0, 0);
+boolean isBrake = false;
+boolean isAcceleration = false;
+boolean isDownAcceleration = false;
+boolean isTurnLeft = false;
+boolean isTurnRight = false;
+/////////////////////////////////////////////
+
 //functions for setting up jeep body parts
 void setUpJeepBar(float length, float height, float radius) {
 	barCurveSide.CreateOval(radius, length / 3, height);
@@ -176,7 +199,45 @@ void drawAxis()
 		glVertex3f(0, 0, 4);
 	glEnd();
 }
-
+void OnSpecialKey(int key, int x, int y)
+{
+	if (key == GLUT_KEY_DOWN) {
+		if (!isAcceleration)
+			isDownAcceleration = true;
+	}
+	else if (key == GLUT_KEY_UP) {
+		if (!isDownAcceleration)
+			isAcceleration = true;
+	}
+	else if (key == GLUT_KEY_LEFT) {
+		if (!isTurnRight)
+			isTurnLeft = true;
+	}
+	else if (key == GLUT_KEY_RIGHT) {
+		if (!isTurnLeft)
+			isTurnRight = true;
+	}
+}
+void OnSpecialKeyUp(int key, int x, int y)
+{
+	if (key == GLUT_KEY_DOWN)
+		isDownAcceleration = false;
+	else if (key == GLUT_KEY_UP)
+		isAcceleration = false;
+	else if (key == GLUT_KEY_LEFT)
+		isTurnLeft = false;
+	else if (key == GLUT_KEY_RIGHT)
+		isTurnRight = false;
+}
+void myKeyboardUp(unsigned char key, int x, int y)
+{
+	switch (key)
+	{
+	case ' ':
+		isBrake = false;
+		break;
+	}
+}
 void myKeyboard(unsigned char key, int x, int y)
 {
 	switch (key)
@@ -222,11 +283,12 @@ void myKeyboard(unsigned char key, int x, int y)
 	case 'd' | 'D':
 		zCoord += 5;
 		break;
+	case ' ':
+		isBrake = true;
+		break;
 	default:
 		break;
 	}
-
-	glutPostRedisplay();
 }
 
 void setupMaterial(float ambient[], float diffuse[], float specular[], float shiness)
@@ -1287,22 +1349,99 @@ void initialize() {
 
 }
 
+void calculateAnimation() {
+	//////////////////////////////////////////////////////
+	float deltaTime = (clock() - (float)lastTime) / CLOCKS_PER_SEC;
+	static float topSpeed = 0;//v0=0
+	float maxVelocity = 100 * METERTOUNIT;//100m/s=360km/h
+	float maxReverVelocity = -20 * METERTOUNIT;//-20m/s
+	float brakeDecelerate = -50 * METERTOUNIT;//-50 m/s2
+	float otherDecelerate = -5 * METERTOUNIT;//-5 m/s2  air resistance (drag) and rolling friction
+	static float steerAngel = 0;
+	float maxSteerAngel = 10;//30 degree
+	float steerAngelInc = 5;//incr 30 degree/s
+	////////////////////////////////////////////////////////////
+	float accel = 50 * METERTOUNIT;//a=20m/s
+	if (isBrake) {
+		if (topSpeed >= 0) topSpeed = max(0, topSpeed + brakeDecelerate * deltaTime);
+		else topSpeed = min(0, topSpeed - brakeDecelerate * deltaTime);
+	}
+	else if (isAcceleration)topSpeed = min(topSpeed + (accel)*deltaTime, maxVelocity);
+	else if (isDownAcceleration)topSpeed = max(topSpeed - (accel)* deltaTime, maxReverVelocity);
+	if (topSpeed >= 0) topSpeed = max(0, topSpeed + otherDecelerate * deltaTime);
+	else topSpeed = min(0, topSpeed - otherDecelerate * deltaTime);
+	//
+	
+	if (steerAngel > 2|| steerAngel < 2){
+		//turnLeft
+		float R = vehicleL/tan(steerAngel*D2G);
+		frontRightWheelSteerAngel = atan(vehicleL / (R - vehicleW / 2))/D2G;
+		frontLeftWheelSteerAngel = atan(vehicleL / (R + vehicleW / 2))/D2G;
+		float turningAngle = asin(topSpeed*deltaTime / R);
+		vehicleSteerAngel += turningAngle/ D2G;
+		forwardVector = Vector3(forwardVector.x*cos(turningAngle) + forwardVector.z*sin(turningAngle), forwardVector.y, forwardVector.x*-sin(turningAngle) + forwardVector.z*cos(turningAngle));
+	}
+	if (isTurnLeft)steerAngel = steerAngel + steerAngelInc * deltaTime;
+	else if (isTurnRight)steerAngel = steerAngel - steerAngelInc * deltaTime;
+	if (steerAngel > 0)steerAngel = min(steerAngel, maxSteerAngel);
+	else steerAngel = max(steerAngel, -maxSteerAngel);
+	
+	vehiclePosition = vehiclePosition + Vector3(topSpeed*deltaTime*forwardVector.x, topSpeed*deltaTime*forwardVector.y, topSpeed*deltaTime*forwardVector.z);
+	frontLeftWheelRotateAngel +=topSpeed / wheelRadius/ D2G* deltaTime;
+	frontRightWheelRotateAngel += topSpeed / wheelRadius/ D2G* deltaTime;
+	rearWheelRotateAngel += topSpeed / wheelRadius / D2G* deltaTime;
+	
+	lastTime = clock();
+}
+
 void drawJeep() {
+	calculateAnimation();
+	//////////////////////////////////////////
+	glPushMatrix();
+	glTranslatef(vehiclePosition.x, vehiclePosition.y, vehiclePosition.z);
+	glRotatef(vehicleSteerAngel, 0, 1, 0);
 	glPushMatrix();
 	glTranslatef(-41.5, 22, 0);
 	glScalef(wheelScaleFactor, wheelScaleFactor, wheelScaleFactor);
 	drawWheel();
 	glPopMatrix();
-
 	glPushMatrix();
 	glTranslatef(30, -1, 0);
 	glRotatef(90, 0, 1, 0);
-	drawWheelWithCylinderAxis();
+	///////////////////////////////FWheel
+	//LF
+	glPushMatrix();
+	glTranslatef(-wheelAxisLength / 2, 0, 0);
+	glRotatef(frontLeftWheelSteerAngel, 0, 1, 0);
+	glRotatef(frontLeftWheelRotateAngel, 1, 0, 0);
+	glScalef(wheelScaleFactor, wheelScaleFactor, wheelScaleFactor);
+	drawWheel();
+	glPopMatrix();
+	
+	glPushMatrix();
+	glRotatef(frontLeftWheelRotateAngel, 1, 0, 0);
+	glScalef(1, wheelScaleFactor, wheelScaleFactor);
+	glRotatef(90, 0, 0, 1);
+	Cl.Draw();
 	glPopMatrix();
 
+	//RF
+	glPushMatrix();
+	glScalef(-1, 1, 1);
+	glPushMatrix();
+	glTranslatef(-wheelAxisLength / 2, 0, 0);
+	glRotatef(-frontRightWheelSteerAngel, 0, 1, 0);
+	glRotatef(frontRightWheelRotateAngel, 1, 0, 0);
+	glScalef(wheelScaleFactor, wheelScaleFactor, wheelScaleFactor);
+	drawWheel();
+	glPopMatrix();
+	glPopMatrix();
+	//////////////////////////////RW
+	glPopMatrix();
 
 	glPushMatrix();
-	glTranslatef(-25, -1, 0);
+	glTranslatef(-vehicleL, -1, 0);
+	glRotatef(-rearWheelRotateAngel, 0, 0, 1);
 	glRotatef(90, 0, 1, 0);
 	drawWheelWithCylinderAxis();
 	glPopMatrix();
@@ -1310,6 +1449,10 @@ void drawJeep() {
 	//glEnable(GL_COLOR_MATERIAL);
 	drawJeepBody(40, 40, 44, 25, 18, 15, 2, 3, 75);
 	glPopMatrix();
+
+
+	glPopMatrix();
+	
 }
 
 void drawObstacles() {
@@ -1365,7 +1508,7 @@ void myInit()
 	);
 	//Default MatrixMode is MODELVIEW 
 	glMatrixMode(GL_MODELVIEW);
-
+	lastTime = clock();
 	glFrontFace(GL_CCW);
 	glClearColor(0.2, 0.2, 0.2, 0.5);
 	glShadeModel(GL_SMOOTH);
@@ -1405,7 +1548,10 @@ void onMotion(int x, int y) {
 	o_y = y;
 	glutPostRedisplay();
 }
-
+void idle()
+{
+	glutPostRedisplay();
+}
 int main(int argc, char* argv[])
 {
 	glutInit(&argc, (char**)argv); //initialize the tool kit
@@ -1449,10 +1595,13 @@ int main(int argc, char* argv[])
 
 	glutMotionFunc(onMotion);
 	glutMouseFunc(onMouseDown);
+	glutSpecialFunc(OnSpecialKey);
+	glutSpecialUpFunc(OnSpecialKeyUp);
 	glutKeyboardFunc(myKeyboard);
+	glutKeyboardUpFunc(myKeyboardUp);
     glutDisplayFunc(myDisplay);
 	glutTimerFunc(100, processTimer, 10);
-
+	glutIdleFunc(idle);
 
 	glutMainLoop();
 	return 0;

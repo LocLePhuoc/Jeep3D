@@ -105,7 +105,9 @@ public:
 	{
 		x = p.x, y = p.y, z = p.z;
 	};
+	Vector3 operator + (Vector3 b);
 	Vector3 cross(Vector3 b);
+	float magnitude();
 	float dot(Vector3 b);
 };
 #endif
