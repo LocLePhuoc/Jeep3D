@@ -7,23 +7,31 @@
 #include "supportClass.h"
 #include "Mesh.h"
 #include "Wheel.h"
-#include <time.h>
-#define D2G (3.14159/180)
+#include "Keyboard.h"
+#include "Movement.h"
+#define D2G 3.14159/180
 
 #define PI			3.1415926
 using namespace std;
 
-//camera variables
+//keyboard 
+Keyboard keyboard;
 
+//monitor the movement
+Movement movement;
+float jeepSteerAngle = 0;
+
+
+//camera variables
 int o_x, o_y;
 float eyeX, eyeY, eyeZ;
 float centerX, centerY, centerZ;
 float upX, upY, upZ;
-float alpha = 45;
+float alpha = 180;
 float beta = 45;
 float deltaAngle = 5;
 float dR = 0.2;
-float Radius = 600;
+float Radius = 150;
 float orthorScaler = 3;
 
 GLfloat angle;
@@ -79,6 +87,15 @@ Mesh bodyBackSideEdge;
 
 float wheelAxisLength = 52.0f;
 float wheelScaleFactor = 4.5;
+
+//spin angle of the wheels
+float wheelSpinAngle = 0;
+float wheelRadius = wheelScaleFactor * 3;
+
+//steering angle for front wheels
+float leftFrontWheelSteerAngle = 0;
+float rightFrontWheelSteerAngle = 0;
+
 //color
 float qaRed[] = { 1.0,0.0,0.0,1.0 };
 float qaGreen[] = { 0.0,1.0,0.0,1.0 };
@@ -91,9 +108,6 @@ float qaGray[] = { 0.5,0.5,0.5,1.0 };
 float qaTyre[] = { 0.2,0.2,0.2,1.0 };
 float qaGray2[] = { 0.95,0.95,0.95,1.0 };
 
-bool isLeftDoorOpen = false;
-bool isRightDoorOpen = false;
-bool secondLightOn = false;
 float leftDoorAngle = 0;
 float rightDoorAngle = 0;
 
@@ -110,34 +124,12 @@ float glass_specular[] = { 0.774597f, 0.774597f, 0.774597f, 1.0f };
 float glass_shine = 76.8f;
 
 //coordinates of the car, used for moving
-float xCoord;
+float static xCoord;
 float yCoord;
-float zCoord;
+float static zCoord;
 
 //obstacles
 Mesh pillarObstacle;
-
-//////////////car animation////////////////
-clock_t lastTime;
-#define METERTOUNIT (4.5*3/0.5)
-float wheelRadius = wheelScaleFactor * 3;
-float vehicleL = 25;
-float vehicleW = wheelAxisLength;
-float vehicleSteerAngel = 0;
-float frontLeftWheelSteerAngel = 0;
-float frontRightWheelSteerAngel = 0;
-float rearWheelSteerAngel = 0;
-float frontLeftWheelRotateAngel = 0;
-float frontRightWheelRotateAngel = 0;
-float rearWheelRotateAngel = 0;
-Vector3 forwardVector = Vector3(1.0, 0, 0);
-Vector3 vehiclePosition = Vector3(0.0, 0, 0);
-boolean isBrake = false;
-boolean isAcceleration = false;
-boolean isDownAcceleration = false;
-boolean isTurnLeft = false;
-boolean isTurnRight = false;
-/////////////////////////////////////////////
 
 //functions for setting up jeep body parts
 void setUpJeepBar(float length, float height, float radius) {
@@ -199,46 +191,8 @@ void drawAxis()
 		glVertex3f(0, 0, 4);
 	glEnd();
 }
-void OnSpecialKey(int key, int x, int y)
-{
-	if (key == GLUT_KEY_DOWN) {
-		if (!isAcceleration)
-			isDownAcceleration = true;
-	}
-	else if (key == GLUT_KEY_UP) {
-		if (!isDownAcceleration)
-			isAcceleration = true;
-	}
-	else if (key == GLUT_KEY_LEFT) {
-		if (!isTurnRight)
-			isTurnLeft = true;
-	}
-	else if (key == GLUT_KEY_RIGHT) {
-		if (!isTurnLeft)
-			isTurnRight = true;
-	}
-}
-void OnSpecialKeyUp(int key, int x, int y)
-{
-	if (key == GLUT_KEY_DOWN)
-		isDownAcceleration = false;
-	else if (key == GLUT_KEY_UP)
-		isAcceleration = false;
-	else if (key == GLUT_KEY_LEFT)
-		isTurnLeft = false;
-	else if (key == GLUT_KEY_RIGHT)
-		isTurnRight = false;
-}
-void myKeyboardUp(unsigned char key, int x, int y)
-{
-	switch (key)
-	{
-	case ' ':
-		isBrake = false;
-		break;
-	}
-}
-void myKeyboard(unsigned char key, int x, int y)
+
+void myKeyboardDown(unsigned char key, int x, int y)
 {
 	switch (key)
 	{
@@ -262,9 +216,6 @@ void myKeyboard(unsigned char key, int x, int y)
 		if (rightDoorAngle <= 0)
 			rightDoorAngle = 0;
 		break;
-	case 'l' | 'L':
-		secondLightOn = !secondLightOn;
-		break;
 	case 'k' | 'K':
 		Radius += 2;
 		break;
@@ -272,19 +223,35 @@ void myKeyboard(unsigned char key, int x, int y)
 		Radius -= 2;
 		break;
 	case 'w' | 'W' :
-		xCoord += 5;
+		keyboard.onKeyEventDown(KEY_FORWARD);
 		break;
 	case 's' | 'S':
-		xCoord -= 5;
+		keyboard.onKeyEventDown(KEY_BACKWARD);
 		break;
 	case 'a' | 'A':
-		zCoord -= 5;
+		keyboard.onKeyEventDown(KEY_LEFT);
 		break;
 	case 'd' | 'D':
-		zCoord += 5;
+		keyboard.onKeyEventDown(KEY_RIGHT);
 		break;
-	case ' ':
-		isBrake = true;
+	default:
+		break;
+	}
+}
+
+void myKeyboardUp(unsigned char key, int x, int y) {
+	switch (key) {
+	case 'w' | 'W':
+		keyboard.onKeyEventUp(KEY_FORWARD);
+		break;
+	case 's' | 'S':
+		keyboard.onKeyEventUp(KEY_BACKWARD);
+		break;
+	case 'a' | 'A':
+		keyboard.onKeyEventUp(KEY_LEFT);
+		break;
+	case 'd' | 'D':
+		keyboard.onKeyEventUp(KEY_RIGHT);
 		break;
 	default:
 		break;
@@ -404,7 +371,6 @@ void drawWheelWithCylinderAxis() {
 	glRotatef(90, 0, 0, 1);
 	Cl.Draw();
 	glPopMatrix();
-
 }
 
 /*
@@ -1337,111 +1303,63 @@ void view() {
 }
 
 void initialize() {
-	eyeX = xCoord + Radius * cos(D2G * alpha);
+	eyeX = movement.currentX + Radius * cos(D2G * alpha);
 	eyeY = Radius * sin(D2G * beta);
-	eyeZ = zCoord + Radius * sin(D2G * alpha);
-	centerX = xCoord;
+	eyeZ = movement.currentZ + Radius * sin(D2G * alpha);
+	centerX = movement.currentX;
 	centerY = 0;
-	centerZ = zCoord;
+	centerZ = movement.currentZ;
 	upX = 0;
 	upY = 1;
 	upZ = 0;
 
 }
 
-void calculateAnimation() {
-	//////////////////////////////////////////////////////
-	float deltaTime = (clock() - (float)lastTime) / CLOCKS_PER_SEC;
-	static float topSpeed = 0;//v0=0
-	float maxVelocity = 100 * METERTOUNIT;//100m/s=360km/h
-	float maxReverVelocity = -20 * METERTOUNIT;//-20m/s
-	float brakeDecelerate = -50 * METERTOUNIT;//-50 m/s2
-	float otherDecelerate = -5 * METERTOUNIT;//-5 m/s2  air resistance (drag) and rolling friction
-	static float steerAngel = 0;
-	float maxSteerAngel = 10;//30 degree
-	float steerAngelInc = 5;//incr 30 degree/s
-	////////////////////////////////////////////////////////////
-	float accel = 50 * METERTOUNIT;//a=20m/s
-	if (isBrake) {
-		if (topSpeed >= 0) topSpeed = max(0, topSpeed + brakeDecelerate * deltaTime);
-		else topSpeed = min(0, topSpeed - brakeDecelerate * deltaTime);
-	}
-	else if (isAcceleration)topSpeed = min(topSpeed + (accel)*deltaTime, maxVelocity);
-	else if (isDownAcceleration)topSpeed = max(topSpeed - (accel)* deltaTime, maxReverVelocity);
-	if (topSpeed >= 0) topSpeed = max(0, topSpeed + otherDecelerate * deltaTime);
-	else topSpeed = min(0, topSpeed - otherDecelerate * deltaTime);
-	//
-	
-	if (steerAngel > 2|| steerAngel < 2){
-		//turnLeft
-		float R = vehicleL/tan(steerAngel*D2G);
-		frontRightWheelSteerAngel = atan(vehicleL / (R - vehicleW / 2))/D2G;
-		frontLeftWheelSteerAngel = atan(vehicleL / (R + vehicleW / 2))/D2G;
-		float turningAngle = asin(topSpeed*deltaTime / R);
-		vehicleSteerAngel += turningAngle/ D2G;
-		forwardVector = Vector3(forwardVector.x*cos(turningAngle) + forwardVector.z*sin(turningAngle), forwardVector.y, forwardVector.x*-sin(turningAngle) + forwardVector.z*cos(turningAngle));
-	}
-	if (isTurnLeft)steerAngel = steerAngel + steerAngelInc * deltaTime;
-	else if (isTurnRight)steerAngel = steerAngel - steerAngelInc * deltaTime;
-	if (steerAngel > 0)steerAngel = min(steerAngel, maxSteerAngel);
-	else steerAngel = max(steerAngel, -maxSteerAngel);
-	
-	vehiclePosition = vehiclePosition + Vector3(topSpeed*deltaTime*forwardVector.x, topSpeed*deltaTime*forwardVector.y, topSpeed*deltaTime*forwardVector.z);
-	frontLeftWheelRotateAngel +=topSpeed / wheelRadius/ D2G* deltaTime;
-	frontRightWheelRotateAngel += topSpeed / wheelRadius/ D2G* deltaTime;
-	rearWheelRotateAngel += topSpeed / wheelRadius / D2G* deltaTime;
-	
-	lastTime = clock();
-}
-
 void drawJeep() {
-	calculateAnimation();
-	//////////////////////////////////////////
-	glPushMatrix();
-	glTranslatef(vehiclePosition.x, vehiclePosition.y, vehiclePosition.z);
-	glRotatef(vehicleSteerAngel, 0, 1, 0);
 	glPushMatrix();
 	glTranslatef(-41.5, 22, 0);
 	glScalef(wheelScaleFactor, wheelScaleFactor, wheelScaleFactor);
 	drawWheel();
 	glPopMatrix();
+
 	glPushMatrix();
 	glTranslatef(30, -1, 0);
 	glRotatef(90, 0, 1, 0);
-	///////////////////////////////FWheel
-	//LF
+
+	//  left front wheel
 	glPushMatrix();
 	glTranslatef(-wheelAxisLength / 2, 0, 0);
-	glRotatef(frontLeftWheelSteerAngel, 0, 1, 0);
-	glRotatef(frontLeftWheelRotateAngel, 1, 0, 0);
+	glRotatef(leftFrontWheelSteerAngle, 0, 1, 0);
+	glRotatef(-wheelSpinAngle, 1, 0, 0);
 	glScalef(wheelScaleFactor, wheelScaleFactor, wheelScaleFactor);
 	drawWheel();
 	glPopMatrix();
-	
+
+	//  right front wheel
 	glPushMatrix();
-	glRotatef(frontLeftWheelRotateAngel, 1, 0, 0);
+	glScalef(-1, 1, 1);
+	glPushMatrix();
+	glTranslatef(-wheelAxisLength / 2, 0, 0);
+	glRotatef(-rightFrontWheelSteerAngle, 0, 1, 0);
+	glRotatef(-wheelSpinAngle, 1, 0, 0);
+	glScalef(wheelScaleFactor, wheelScaleFactor, wheelScaleFactor);
+	drawWheel();
+	glPopMatrix();
+	glPopMatrix();
+
+	//draw front wheel axis
+	glPushMatrix();
 	glScalef(1, wheelScaleFactor, wheelScaleFactor);
 	glRotatef(90, 0, 0, 1);
 	Cl.Draw();
 	glPopMatrix();
 
-	//RF
-	glPushMatrix();
-	glScalef(-1, 1, 1);
-	glPushMatrix();
-	glTranslatef(-wheelAxisLength / 2, 0, 0);
-	glRotatef(-frontRightWheelSteerAngel, 0, 1, 0);
-	glRotatef(frontRightWheelRotateAngel, 1, 0, 0);
-	glScalef(wheelScaleFactor, wheelScaleFactor, wheelScaleFactor);
-	drawWheel();
-	glPopMatrix();
-	glPopMatrix();
-	//////////////////////////////RW
 	glPopMatrix();
 
+
 	glPushMatrix();
-	glTranslatef(-vehicleL, -1, 0);
-	glRotatef(-rearWheelRotateAngel, 0, 0, 1);
+	glTranslatef(-25, -1, 0);
+	glRotatef(wheelSpinAngle, 0, 0, 1);
 	glRotatef(90, 0, 1, 0);
 	drawWheelWithCylinderAxis();
 	glPopMatrix();
@@ -1449,36 +1367,94 @@ void drawJeep() {
 	//glEnable(GL_COLOR_MATERIAL);
 	drawJeepBody(40, 40, 44, 25, 18, 15, 2, 3, 75);
 	glPopMatrix();
-
-
-	glPopMatrix();
-	
 }
 
 void drawObstacles() {
 	setupMaterial(qaTyre, qaTyre, qaBlack, 60.0);
 	glPushMatrix();
-	glTranslatef(80, 50, 0);
+	glTranslatef(80, 50, 200);
+	glScalef(10, 1, 2);
 	pillarObstacle.DrawFaces(1);
 	glPopMatrix();
 
 	glPushMatrix();
 	glTranslatef(500, 50, -200);
+	glScalef(3, 1, 3);
 	pillarObstacle.DrawFaces(1);
 	glPopMatrix();
 }
 
+void jeepMovement() {
+	float backwardVelocity = movement.getBackwardVelocity();
+	float forwardVelocity = movement.getForwardVelocity();
+	
+	keyboard.setVelocities(forwardVelocity, backwardVelocity);
+
+	movement.setDirection(keyboard.getDirection());
+	float timeElapsed = movement.move();
+
+	if (backwardVelocity > 0) //move backward
+	{
+		wheelSpinAngle += (backwardVelocity * timeElapsed * 20 / wheelRadius) / D2G;
+	}
+	else if (forwardVelocity > 0) // move forward
+	{
+		wheelSpinAngle -= (forwardVelocity * timeElapsed * 20 / wheelRadius) / D2G;
+	}
+
+	if (wheelSpinAngle >= 360) wheelSpinAngle -= 360;
+	if (wheelSpinAngle <= -360) wheelSpinAngle += 360;
+
+	//calculate the steering angles of the front wheel
+	//radius of steering 
+	float R = movement.getDistanceTraveled() / (movement.getSteerAngleIncrement() * D2G);
+	float lengthBetweenWheelAxes = 55;
+	float lengthBetweenWheels = 52;
+	rightFrontWheelSteerAngle = abs(atan(lengthBetweenWheelAxes / (R - lengthBetweenWheels / 2)) / D2G) * 12000;
+	leftFrontWheelSteerAngle = abs(atan(lengthBetweenWheelAxes / (R + lengthBetweenWheels / 2)) / D2G) * 12000;
+	
+	float currentAction = movement.getCurrentAction();
+	if (currentAction == IDLE || currentAction == FORWARD || currentAction == BACKWARD) {
+		rightFrontWheelSteerAngle = 0;
+		leftFrontWheelSteerAngle = 0;
+	}
+	if (currentAction == TURN_RIGHT_BACKWARD || currentAction == TURN_RIGHT_FORWARD) {
+		rightFrontWheelSteerAngle = -rightFrontWheelSteerAngle;
+		leftFrontWheelSteerAngle = -leftFrontWheelSteerAngle;
+	}
+}
+
+void idle() {
+	glutPostRedisplay();
+}
+
+void turnJeep() {
+	Direction currentAction = movement.getCurrentAction();
+	if (currentAction == TURN_LEFT_FORWARD || currentAction == TURN_RIGHT_BACKWARD) {
+		movement.jeepSteerAngle += movement.getSteerAngleIncrement();
+		if (movement.jeepSteerAngle >= 360) {
+			movement.jeepSteerAngle -= 360;
+		}
+	}
+	else if (currentAction == TURN_RIGHT_FORWARD || currentAction == TURN_LEFT_BACKWARD) {
+		movement.jeepSteerAngle -= movement.getSteerAngleIncrement();
+		if (movement.jeepSteerAngle <= -360) {
+			movement.jeepSteerAngle += 360;
+		}
+	}
+	glRotatef(movement.jeepSteerAngle, 0, 1, 0);
+}
 void myDisplay()
 {
 	initialize();
+	jeepMovement();
 	view();
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);	
-
-	if (secondLightOn) glEnable(GL_LIGHT1);
-	else glDisable(GL_LIGHT1);
 	drawObstacles();
+
 	glPushMatrix();
-	glTranslatef(xCoord, 0, zCoord);
+	glTranslatef(movement.currentX, 0, movement.currentZ);
+	turnJeep();
 	drawJeep();
 	glPopMatrix();
 
@@ -1508,7 +1484,7 @@ void myInit()
 	);
 	//Default MatrixMode is MODELVIEW 
 	glMatrixMode(GL_MODELVIEW);
-	lastTime = clock();
+
 	glFrontFace(GL_CCW);
 	glClearColor(0.2, 0.2, 0.2, 0.5);
 	glShadeModel(GL_SMOOTH);
@@ -1526,6 +1502,7 @@ void myInit()
 
 	glEnable(GL_LIGHTING);
 	glEnable(GL_LIGHT0);
+	glEnable(GL_LIGHT1);
 	GLfloat light_position1[] = { 30.0f, 10.0f, 30.0f, 0.0f };
 	glLightfv(GL_LIGHT1, GL_AMBIENT, qaAmbientLight);
 	glLightfv(GL_LIGHT1, GL_DIFFUSE, qaDiffuseLight);
@@ -1546,12 +1523,8 @@ void onMotion(int x, int y) {
 	beta += (y - o_y) / 2;
 	o_x = x;
 	o_y = y;
-	glutPostRedisplay();
 }
-void idle()
-{
-	glutPostRedisplay();
-}
+
 int main(int argc, char* argv[])
 {
 	glutInit(&argc, (char**)argv); //initialize the tool kit
@@ -1595,13 +1568,12 @@ int main(int argc, char* argv[])
 
 	glutMotionFunc(onMotion);
 	glutMouseFunc(onMouseDown);
-	glutSpecialFunc(OnSpecialKey);
-	glutSpecialUpFunc(OnSpecialKeyUp);
-	glutKeyboardFunc(myKeyboard);
+	glutKeyboardFunc(myKeyboardDown);
 	glutKeyboardUpFunc(myKeyboardUp);
     glutDisplayFunc(myDisplay);
-	glutTimerFunc(100, processTimer, 10);
 	glutIdleFunc(idle);
+	 //glutTimerFunc(100, processTimer, 10);
+
 
 	glutMainLoop();
 	return 0;

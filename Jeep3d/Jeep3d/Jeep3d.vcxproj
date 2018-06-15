@@ -116,12 +116,16 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Jeep.cpp" />
+    <ClCompile Include="Keyboard.cpp" />
     <ClCompile Include="Mesh.cpp" />
+    <ClCompile Include="Movement.cpp" />
     <ClCompile Include="supportClass.cpp" />
     <ClCompile Include="Wheel.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Keyboard.h" />
     <ClInclude Include="Mesh.h" />
+    <ClInclude Include="Movement.h" />
     <ClInclude Include="supportClass.h" />
     <ClInclude Include="Wheel.h" />
   </ItemGroup>

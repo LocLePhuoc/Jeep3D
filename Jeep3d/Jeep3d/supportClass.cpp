@@ -37,3 +37,7 @@ void Vector3::normalize()
 	y = y/temp;
 	z = z/temp;
 }
+
+float Vector3::size() {
+	return sqrt(x * x + y * y + z * z);
+}

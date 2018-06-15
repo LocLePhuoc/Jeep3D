@@ -109,5 +109,6 @@ public:
 	Vector3 cross(Vector3 b);
 	float magnitude();
 	float dot(Vector3 b);
+	float size();
 };
 #endif
