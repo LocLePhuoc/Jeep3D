@@ -1,7 +1,7 @@
 // Bai3.cpp : Defines the entry point for the console application.
 //
 
-
+#include "stdafx.h"
 #include <math.h>
 #include <iostream>
 #include "supportClass.h"
@@ -9,6 +9,7 @@
 #include "Wheel.h"
 #include "Keyboard.h"
 #include "Movement.h"
+#include "Tga.h"
 #define D2G 3.14159/180
 
 #define PI			3.1415926
@@ -131,6 +132,9 @@ float static zCoord;
 //obstacles
 Mesh pillarObstacle;
 
+//texture
+Texture   floorTex;
+
 //functions for setting up jeep body parts
 void setUpJeepBar(float length, float height, float radius) {
 	barCurveSide.CreateOval(radius, length / 3, height);
@@ -175,6 +179,26 @@ void setUpJeepBody(float length, float width, float lHeight, float sHeight, floa
 	bodyFrontSideEdge.CreateCylinder(20, 20, lHeight - sHeight - edgeCurveRadius * (1 - cos(steepAngle * D2G))
 		, edgeRadius, edgeRadius, 90, (lHeight - sHeight) * tan((90 - steepAngle) * D2G));
 	bodyBackSideEdge.CreateCylinder(20, 20, lHeight - rimHeight * 0.5, edgeRadius, edgeRadius, 90, 0);
+}
+
+//	Load Texture
+void loadTextures(void) {
+	char s[] = "pattern2.tga";
+	bool status = LoadTGA(&floorTex, s);
+	if (status) {
+		glGenTextures(1, &floorTex.texID);
+		glBindTexture(GL_TEXTURE_2D, floorTex.texID);
+
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, floorTex.width,
+			floorTex.height, 0,
+			GL_RGB, GL_UNSIGNED_BYTE, floorTex.imageData);
+
+		if (floorTex.imageData)
+			free(floorTex.imageData);
+	}
 }
 
 void drawAxis()
@@ -510,6 +534,11 @@ void drawFront(float length, float height, float radius) {
 	drawLight(2 * radius);
 	glPopMatrix();
 
+	glDisable(GL_LIGHTING);
+	glEnable(GL_TEXTURE_2D);
+	loadTextures();
+
+	glBindTexture(GL_TEXTURE_2D, floorTex.texID);
 
 	glPushMatrix();
 	glTranslatef(0, length / 2 + radius + height / 2, 0);
@@ -575,9 +604,43 @@ void drawFront(float length, float height, float radius) {
 	drawFrontPanelCorner(length, height, radius);
 	glPopMatrix();
 	glPopMatrix();
+
+	glDisable(GL_TEXTURE_2D);
+	glEnable(GL_LIGHTING);
+}
+
+void drawFloor() {
+	glDisable(GL_LIGHTING);
+	glEnable(GL_TEXTURE_2D);
+	loadTextures();
+
+	glBindTexture(GL_TEXTURE_2D, floorTex.texID);
+	glColor4f(1, 1, 1, 1.0);
+
+	glBegin(GL_QUADS);
+	glTexCoord2f(0, 0);
+	glVertex3f(10, 0, 10);
+	glTexCoord2f(0, 1);
+	glVertex3f(10, 0, -10);
+	glTexCoord2f(1, 1);
+	glVertex3f(-10, 0, -10);
+	glTexCoord2f(1, 0);
+	glVertex3f(-10, 0, 10);
+	glEnd();
+
+	glDisable(GL_TEXTURE_2D);
+	glEnable(GL_LIGHTING);
+
 }
 
 void drawJeepFront(float length, float width, float EdgeRadius,float sHeight, float height, float deltaHeight) {
+	glDisable(GL_LIGHTING);
+	glEnable(GL_TEXTURE_2D);
+	loadTextures();
+
+	glBindTexture(GL_TEXTURE_2D, floorTex.texID);
+	glColor4f(1, 1, 1, 1.0);
+	
 	glColor3f(0.8,0.8,0.8);
 	glPushMatrix();
 	glTranslatef(length,-deltaHeight,0);
@@ -592,26 +655,36 @@ void drawJeepFront(float length, float width, float EdgeRadius,float sHeight, fl
 	glTranslatef(0, 0, width / 2 - EdgeRadius);
 	jeepFrontCylinder.DrawFaces(-1);
 	glPopMatrix();
-	glPopMatrix();
+	glPopMatrix();	
 
 	glBegin(GL_QUADS);
 
-
+	
 	//front face1
 	glNormal3f(1, 0, 0);
+	glTexCoord2f(0, 0);
 	glVertex3f(length, EdgeRadius - deltaHeight, width / 2 - EdgeRadius);
+	glTexCoord2f(0, 1);
 	glVertex3f(length, EdgeRadius - deltaHeight, -width / 2 + EdgeRadius);
+	glTexCoord2f(1, 1);
 	glVertex3f(length, - deltaHeight, -width / 2 + EdgeRadius);
+	glTexCoord2f(1, 0);
 	glVertex3f(length, - deltaHeight, width / 2 - EdgeRadius);
 
 	//top face
 	glNormal3f(0, 1, 0);
+	glTexCoord2f(0, 0);
 	glVertex3f(0, EdgeRadius, width / 2 - EdgeRadius);
+	glTexCoord2f(0, 1);
 	glVertex3f(0, EdgeRadius, -width / 2 + EdgeRadius);
+	glTexCoord2f(1, 1);
 	glVertex3f(length, EdgeRadius - deltaHeight, -width / 2 + EdgeRadius);
+	glTexCoord2f(1, 0);
 	glVertex3f(length, EdgeRadius - deltaHeight, width / 2 - EdgeRadius);
 
 	glEnd();
+
+	
 
 	glBegin(GL_QUADS);
 	//front face 2
@@ -630,19 +703,29 @@ void drawJeepFront(float length, float width, float EdgeRadius,float sHeight, fl
 
 	//side face 1
 	glNormal3f(0, 0, 1);
+	glTexCoord2f(0, 0);
 	glVertex3f(0, 0, width / 2);
+	glTexCoord2f(0, 1);
 	glVertex3f(0, -height + EdgeRadius, width / 2);
+	glTexCoord2f(1, 1);
 	glVertex3f(length, -height + EdgeRadius, width / 2);
+	glTexCoord2f(1, 0);
 	glVertex3f(length, -deltaHeight, width / 2);
 
 	//side face 1
 	glNormal3f(0, 0, -1);
+	glTexCoord2f(0, 0);
 	glVertex3f(0, 0, -width / 2);
+	glTexCoord2f(0, 1);
 	glVertex3f(0, -height + EdgeRadius, -width / 2);
+	glTexCoord2f(1, 1);
 	glVertex3f(length, -height + EdgeRadius, -width / 2);
+	glTexCoord2f(1, 0);
 	glVertex3f(length, -deltaHeight, -width / 2);
 	
 	glEnd();
+	glDisable(GL_TEXTURE_2D);
+	glEnable(GL_LIGHTING);
 
 	//draw front panel
 	float panelHeight = width / 28;
@@ -814,6 +897,12 @@ void drawRIM(float length, float width, float lHeight, float sHeight, float edge
 void drawJeepBody(float length, float width, float lHeight, float sHeight, float rimLength, float rimHeight , float edgeRadius, float edgeCurveRadius, float steepAngle) {
 	setupMaterial(qaTyre, qaTyre, qaBlack, 60.0);
 
+	glDisable(GL_LIGHTING);
+	glEnable(GL_TEXTURE_2D);
+	loadTextures();
+
+	glBindTexture(GL_TEXTURE_2D, floorTex.texID);
+
 	//front side corners
 	glPushMatrix();
 	glTranslatef(0, lHeight - edgeCurveRadius, width / 2 - edgeRadius);
@@ -829,7 +918,6 @@ void drawJeepBody(float length, float width, float lHeight, float sHeight, float
 	glRotatef(90, 1, 0, 0);
 	bodyFrontSideCorner.DrawFaces(1);
 	glPopMatrix();
-
 	//front edge
 	glPushMatrix();
 	glTranslatef(0, lHeight - edgeCurveRadius, - width / 2 + edgeRadius);
@@ -837,7 +925,6 @@ void drawJeepBody(float length, float width, float lHeight, float sHeight, float
 	glRotatef(90, 1, 0, 0);
 	bodyFrontEdge.DrawFaces(-1);
 	glPopMatrix();
-
 	//side edges
 	glPushMatrix();
 	glTranslatef(-length + edgeRadius + edgeCurveRadius, lHeight, -width / 2 + edgeRadius);
@@ -855,7 +942,6 @@ void drawJeepBody(float length, float width, float lHeight, float sHeight, float
 	glRotatef(90, 1, 0, 0);
 	bodySideEdge.DrawFaces(-1);
 	glPopMatrix();
-
 	//back corners 
 	glPushMatrix();
 	glTranslatef(-length + edgeRadius + edgeCurveRadius, lHeight, width / 2 - edgeRadius);
@@ -894,7 +980,6 @@ void drawJeepBody(float length, float width, float lHeight, float sHeight, float
 	glRotatef(180, 1, 0, 0);
 	bodyFrontSideEdge.DrawFaces(-1);
 	glPopMatrix();
-
 	//back side edges
 	glPushMatrix();
 	glTranslatef(-length + edgeRadius + edgeCurveRadius, rimHeight * 0.5, -width / 2 + edgeRadius);
@@ -909,23 +994,39 @@ void drawJeepBody(float length, float width, float lHeight, float sHeight, float
 	bodyBackSideEdge.DrawFaces(-1);
 	glPopMatrix();
 
+	glDisable(GL_TEXTURE_2D);
+	glEnable(GL_LIGHTING);
+
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	glColor3f(0.8, 0.8, 0.8);
+	glDisable(GL_LIGHTING);
+	glEnable(GL_TEXTURE_2D);
+	loadTextures();
+	glBindTexture(GL_TEXTURE_2D, floorTex.texID);
+
+	//glColor3f(0.8, 0.8, 0.8);
 	glBegin(GL_QUADS);
 
 	//back
 	glNormal3f(-1, 0, 0);
+	glTexCoord2f(0, 0);
 	glVertex3f(-length + edgeCurveRadius, lHeight, width / 2 - edgeRadius);
+	glTexCoord2f(0, 1);
 	glVertex3f(-length + edgeCurveRadius, lHeight, -width / 2 + edgeRadius);
+	glTexCoord2f(1, 1);
 	glVertex3f(-length + edgeCurveRadius, rimHeight * 0.5, -width / 2 + edgeRadius);
+	glTexCoord2f(1, 0);
 	glVertex3f(-length + edgeCurveRadius, rimHeight * 0.5, width / 2 - edgeRadius);
 
 
 	//roof
 	glNormal3f(0, 1, 0);
+	glTexCoord2f(0, 0);
 	glVertex3f(0, lHeight + edgeRadius, width / 2 - edgeRadius);
+	glTexCoord2f(0, 1);
 	glVertex3f(0, lHeight + edgeRadius, -width / 2 + edgeRadius);
+	glTexCoord2f(1, 1);
 	glVertex3f(-length + edgeRadius + edgeCurveRadius, lHeight + edgeRadius, -width / 2 + edgeRadius);
+	glTexCoord2f(1, 0);
 	glVertex3f(-length + edgeRadius + edgeCurveRadius, lHeight + edgeRadius, width / 2 - edgeRadius);
 
 	//wind shield
@@ -946,21 +1047,29 @@ void drawJeepBody(float length, float width, float lHeight, float sHeight, float
 
 	setupMaterial(qaTyre, qaTyre, qaBlack, 60.0);
 	glColor3f(0.8, 0.8, 0.8);
+	glTexCoord2f(0, 0);
 	glVertex3f(edgeCurveRadius * sin(steepAngle * D2G) + edgeRadius,
 		frontPanelHeight + sHeight, (width / 2 - edgeRadius));
+	glTexCoord2f(0, 1);
 	glVertex3f(edgeCurveRadius * sin(steepAngle * D2G) + edgeRadius,
 		frontPanelHeight + sHeight, (-width / 2 + edgeRadius));
+	glTexCoord2f(1, 1);
 	glVertex3f(edgeCurveRadius * sin(steepAngle * D2G) + frontPanelLength * 0.1 + edgeRadius,
 		frontPanelHeight * 0.9 + sHeight, (-width / 2 + edgeRadius));
+	glTexCoord2f(1, 0);
 	glVertex3f(edgeCurveRadius * sin(steepAngle * D2G) + frontPanelLength * 0.1 + edgeRadius,
 		frontPanelHeight * 0.9 + sHeight, (width / 2 - edgeRadius));
 
+	glTexCoord2f(0, 0);
 	glVertex3f(edgeCurveRadius * sin(steepAngle * D2G) + frontPanelLength * 0.9 + edgeRadius,
 		frontPanelHeight * 0.1 + sHeight, (width / 2 - edgeRadius));
+	glTexCoord2f(0, 1);
 	glVertex3f(edgeCurveRadius * sin(steepAngle * D2G) + frontPanelLength * 0.9 + edgeRadius,
 		frontPanelHeight * 0.1 + sHeight, (-width / 2 + edgeRadius));
+	glTexCoord2f(1, 1);
 	glVertex3f(edgeCurveRadius * sin(steepAngle * D2G) + frontPanelLength + edgeRadius,
 		sHeight, (-width / 2 + edgeRadius));
+	glTexCoord2f(1, 0);
 	glVertex3f(edgeCurveRadius * sin(steepAngle * D2G) + frontPanelLength + edgeRadius,
 		sHeight, (width / 2 - edgeRadius));
 
@@ -980,31 +1089,47 @@ void drawJeepBody(float length, float width, float lHeight, float sHeight, float
 	setupMaterial(qaTyre, qaTyre, qaBlack, 60.0);
 	glNormal3f(0, 0, -1);
 	glColor3f(0.8, 0.8, 0.8);
+	glTexCoord2f(0, 0);
 	glVertex3f(-length + edgeRadius + edgeCurveRadius, lHeight, -width / 2);
+	glTexCoord2f(0, 1);
 	glVertex3f(-windowLength - edgeRadius, lHeight, -width / 2);
+	glTexCoord2f(1, 1);
 	glVertex3f(-windowLength - edgeRadius, lHeight - edgeCurveRadius,- width / 2);
+	glTexCoord2f(1, 0);
 	glVertex3f(-length + edgeRadius + edgeCurveRadius, lHeight - edgeCurveRadius, -width / 2);
 
 	glNormal3f(0, 0, -1);
 	glColor3f(0.8, 0.8, 0.8);
+	glTexCoord2f(0, 0);
 	glVertex3f(-length + edgeRadius + edgeCurveRadius, lHeight - edgeCurveRadius, -width / 2);
+	glTexCoord2f(0, 1);
 	glVertex3f(-length + edgeRadius + edgeCurveRadius + sideLength * 1 / 8, lHeight - edgeCurveRadius, -width / 2);
+	glTexCoord2f(1, 1);
 	glVertex3f(-length + edgeRadius + edgeCurveRadius + sideLength * 1 / 8, frontPanelHeight * 0.1 + sHeight, -width / 2);
+	glTexCoord2f(1, 0);
 	glVertex3f(-length + edgeRadius + edgeCurveRadius, frontPanelHeight * 0.1 + sHeight, -width / 2);
 
 	glNormal3f(0, 0, -1);
 	glColor3f(0.8, 0.8, 0.8);
+	glTexCoord2f(0, 0);
 	glVertex3f(-windowLength - edgeRadius, lHeight - edgeCurveRadius, -width / 2);
+	glTexCoord2f(0, 1);
 	glVertex3f(-length + edgeRadius + edgeCurveRadius + sideLength * 6 / 8, lHeight - edgeCurveRadius, -width / 2);
+	glTexCoord2f(1, 1);
 	glVertex3f(-length + edgeRadius + edgeCurveRadius + sideLength * 6 / 8, frontPanelHeight * 0.1 + sHeight, -width / 2);
+	glTexCoord2f(1, 0);
 	glVertex3f(-windowLength - edgeRadius, frontPanelHeight * 0.1 + sHeight, -width / 2);
 
 
 	glNormal3f(0, 0, -1);
 	glColor3f(0.8, 0.8, 0.8);
+	glTexCoord2f(0, 0);
 	glVertex3f(-windowLength - edgeRadius, rimHeight, -width / 2);
+	glTexCoord2f(0, 1);
 	glVertex3f(-length + edgeRadius + edgeCurveRadius, rimHeight, -width / 2);
+	glTexCoord2f(1, 1);
 	glVertex3f(-length + edgeRadius + edgeCurveRadius, frontPanelHeight * 0.1 + sHeight, -width / 2);
+	glTexCoord2f(1, 0);
 	glVertex3f(-windowLength - edgeRadius, frontPanelHeight * 0.1 + sHeight, -width / 2);
 
 	//left side
@@ -1019,34 +1144,52 @@ void drawJeepBody(float length, float width, float lHeight, float sHeight, float
 	setupMaterial(qaTyre, qaTyre, qaBlack, 60.0);
 	glNormal3f(0, 0, 1);
 	glColor3f(0.8, 0.8, 0.8);
+	glTexCoord2f(0, 0);
 	glVertex3f(-length + edgeRadius + edgeCurveRadius, lHeight, width / 2);
+	glTexCoord2f(0, 1);
 	glVertex3f(-windowLength - edgeRadius, lHeight, width / 2);
+	glTexCoord2f(1, 1);
 	glVertex3f(-windowLength - edgeRadius, lHeight - edgeCurveRadius, width / 2);
+	glTexCoord2f(1, 0);
 	glVertex3f(-length + edgeRadius + edgeCurveRadius, lHeight - edgeCurveRadius, width / 2);
 
 	glNormal3f(0, 0, 1);
 	glColor3f(0.8, 0.8, 0.8);
+	glTexCoord2f(0, 0);
 	glVertex3f(-length + edgeRadius + edgeCurveRadius, lHeight - edgeCurveRadius, width / 2);
+	glTexCoord2f(0, 1);
 	glVertex3f(-length + edgeRadius + edgeCurveRadius + sideLength * 1 / 8, lHeight - edgeCurveRadius, width / 2);
+	glTexCoord2f(1, 1);
 	glVertex3f(-length + edgeRadius + edgeCurveRadius + sideLength * 1 / 8, frontPanelHeight * 0.1 + sHeight, width / 2);
+	glTexCoord2f(1, 0);
 	glVertex3f(-length + edgeRadius + edgeCurveRadius, frontPanelHeight * 0.1 + sHeight, width / 2);
 
 	glNormal3f(0, 0, 1);
 	glColor3f(0.8, 0.8, 0.8);
+	glTexCoord2f(0, 0);
 	glVertex3f(-windowLength - edgeRadius, lHeight - edgeCurveRadius, width / 2);
+	glTexCoord2f(0, 1);
 	glVertex3f(-length + edgeRadius + edgeCurveRadius + sideLength * 6 / 8, lHeight - edgeCurveRadius, width / 2);
+	glTexCoord2f(1, 1);
 	glVertex3f(-length + edgeRadius + edgeCurveRadius + sideLength * 6 / 8, frontPanelHeight * 0.1 + sHeight, width / 2);
+	glTexCoord2f(1, 0);
 	glVertex3f(-windowLength - edgeRadius, frontPanelHeight * 0.1 + sHeight, width / 2);
 
 
 	glNormal3f(0, 0, 1);
 	glColor3f(0.8, 0.8, 0.8);
+	glTexCoord2f(0, 0);
 	glVertex3f(-windowLength - edgeRadius, rimHeight, width / 2);
+	glTexCoord2f(0, 1);
 	glVertex3f(-length + edgeRadius + edgeCurveRadius , rimHeight, width / 2);
+	glTexCoord2f(1, 1);
 	glVertex3f(-length + edgeRadius + edgeCurveRadius , frontPanelHeight * 0.1 + sHeight, width / 2);
+	glTexCoord2f(1, 0);
 	glVertex3f(-windowLength - edgeRadius, frontPanelHeight * 0.1 + sHeight, width / 2);
 
 	glEnd();
+	glDisable(GL_TEXTURE_2D);
+	glEnable(GL_LIGHTING);
 
 	//right door
 	glPushMatrix();
@@ -1055,6 +1198,12 @@ void drawJeepBody(float length, float width, float lHeight, float sHeight, float
 		glTranslatef(-edgeCurveRadius * sin(steepAngle * D2G) - (lHeight - sHeight) * tan((90 - steepAngle) * D2G), 0, width / 2);
 
 		setupMaterial(glass_ambient, glass_diffuse, qaBlack, glass_shine);
+		
+		glDisable(GL_LIGHTING);
+		glEnable(GL_TEXTURE_2D);
+		loadTextures();
+		glBindTexture(GL_TEXTURE_2D, floorTex.texID);
+
 		glBegin(GL_POLYGON);
 		glColor3f(0.2, 0.2, 0.2);
 		glNormal3f(0, 0, -1);
@@ -1063,33 +1212,45 @@ void drawJeepBody(float length, float width, float lHeight, float sHeight, float
 		glVertex3f(-windowLength, frontPanelHeight * 0.1 + sHeight, -width / 2);
 		glVertex3f((lHeight - edgeCurveRadius - frontPanelHeight * 0.1 - sHeight) / tan(steepAngle * D2G)
 			, frontPanelHeight * 0.1 + sHeight, -width / 2);
-		glEnd();
+		glEnd();		
 
 		setupMaterial(qaTyre, qaTyre, qaBlack, 60.0);
 
 			glBegin(GL_POLYGON);
 			glColor3f(0.8, 0.8, 0.8);
 			glNormal3f(0, 0, -1);
+			glTexCoord2f(0, 0);
 			glVertex3f(-windowLength - edgeRadius, lHeight - edgeCurveRadius, -width/2);
+			glTexCoord2f(0, 1);
 			glVertex3f(-windowLength - edgeRadius, frontPanelHeight * 0.1 + sHeight, -width/2);
+			glTexCoord2f(1, 1);
 			glVertex3f(-windowLength, frontPanelHeight * 0.1 + sHeight, -width/2);
+			glTexCoord2f(1, 0);
 			glVertex3f(-windowLength, lHeight - edgeCurveRadius, -width/2);
 			glEnd();
 
 			glBegin(GL_POLYGON);
 			glNormal3f(0, 0, -1);
+			glTexCoord2f(0, 0);
 			glVertex3f(0, lHeight - edgeCurveRadius, -width/2);
+			glTexCoord2f(0, 1);
 			glVertex3f(-windowLength - edgeRadius, lHeight - edgeCurveRadius, -width/2);
+			glTexCoord2f(1, 1);
 			glVertex3f(-windowLength - edgeRadius, lHeight, -width/2);
+			glTexCoord2f(1, 0);
 			glVertex3f(0, lHeight, -width/2);
 			glEnd();
 
 
 			glBegin(GL_POLYGON);
 			glNormal3f(0, 0, -1);
+			glTexCoord2f(0, 0);
 			glVertex3f(-windowLength - edgeRadius, frontPanelHeight * 0.1 + sHeight, -width/2);
+			glTexCoord2f(0, 1);
 			glVertex3f(-windowLength - edgeRadius, 0, -width/2);
+			glTexCoord2f(1, 1);
 			glVertex3f(edgeCurveRadius * sin(steepAngle * D2G) + (lHeight - sHeight) * tan((90 - steepAngle) * D2G), 0, -width/2);
+			glTexCoord2f(1, 0);
 			glVertex3f(edgeCurveRadius * sin(steepAngle * D2G) + (lHeight - sHeight) * tan((90 - steepAngle) * D2G), sHeight, -width/2);
 			glVertex3f(edgeCurveRadius * sin(steepAngle * D2G) + (lHeight - sHeight) * tan((90 - steepAngle) * D2G) - frontPanelHeight * 0.1 / tan(steepAngle * D2G)
 				, frontPanelHeight * 0.1 + sHeight, -width/2);
@@ -1097,14 +1258,18 @@ void drawJeepBody(float length, float width, float lHeight, float sHeight, float
 
 			glBegin(GL_POLYGON);
 			glNormal3f(0, 0, -1);
+			glTexCoord2f(0, 0);
 			glVertex3f(0, lHeight - edgeCurveRadius, -width/2);
+			glTexCoord2f(0, 1);
 			glVertex3f(edgeCurveRadius * sin(steepAngle * D2G), lHeight - edgeCurveRadius * (1 - cos(steepAngle * D2G)), -width/2);
+			glTexCoord2f(1, 1);
 			glVertex3f(edgeCurveRadius * sin(steepAngle * D2G) + (lHeight - sHeight) * tan((90 - steepAngle) * D2G) - frontPanelHeight * 0.1 / tan(steepAngle * D2G)
 				, frontPanelHeight * 0.1 + sHeight, -width/2);
+			glTexCoord2f(1, 0);
 			glVertex3f((lHeight - edgeCurveRadius - frontPanelHeight * 0.1 - sHeight) / tan(steepAngle * D2G)
 				, frontPanelHeight * 0.1 + sHeight, -width/2);
 			glEnd();
-
+			
 	drawFan(0, lHeight - edgeCurveRadius, -width / 2, edgeCurveRadius, steepAngle, 20, -1);
 	glPopMatrix();
 
@@ -1130,26 +1295,38 @@ void drawJeepBody(float length, float width, float lHeight, float sHeight, float
 	glBegin(GL_POLYGON);
 	glColor3f(0.8, 0.8, 0.8);
 	glNormal3f(0, 0, 1);
+	glTexCoord2f(0, 0);
 	glVertex3f(-windowLength - edgeRadius, lHeight - edgeCurveRadius, width / 2);
+	glTexCoord2f(0, 1);
 	glVertex3f(-windowLength - edgeRadius, frontPanelHeight * 0.1 + sHeight, width / 2);
+	glTexCoord2f(1, 1);
 	glVertex3f(-windowLength, frontPanelHeight * 0.1 + sHeight, width / 2);
+	glTexCoord2f(1, 0);
 	glVertex3f(-windowLength, lHeight - edgeCurveRadius, width / 2);
 	glEnd();
 
 	glBegin(GL_POLYGON);
 	glNormal3f(0, 0, 1);
+	glTexCoord2f(0, 0);
 	glVertex3f(0, lHeight - edgeCurveRadius, width / 2);
+	glTexCoord2f(0, 1);
 	glVertex3f(-windowLength - edgeRadius, lHeight - edgeCurveRadius, width / 2);
+	glTexCoord2f(1, 1);
 	glVertex3f(-windowLength - edgeRadius, lHeight, width / 2);
+	glTexCoord2f(1, 0);
 	glVertex3f(0, lHeight, width / 2);
 	glEnd();
 
 
 	glBegin(GL_POLYGON);
 	glNormal3f(0, 0, 1);
+	glTexCoord2f(0, 0);
 	glVertex3f(-windowLength - edgeRadius, frontPanelHeight * 0.1 + sHeight, width / 2);
+	glTexCoord2f(0, 1);
 	glVertex3f(-windowLength - edgeRadius, 0, width / 2);
+	glTexCoord2f(1, 1);
 	glVertex3f(edgeCurveRadius * sin(steepAngle * D2G) + (lHeight - sHeight) * tan((90 - steepAngle) * D2G), 0, width / 2);
+	glTexCoord2f(1, 0);
 	glVertex3f(edgeCurveRadius * sin(steepAngle * D2G) + (lHeight - sHeight) * tan((90 - steepAngle) * D2G), sHeight, width / 2);
 	glVertex3f(edgeCurveRadius * sin(steepAngle * D2G) + (lHeight - sHeight) * tan((90 - steepAngle) * D2G) - frontPanelHeight * 0.1 / tan(steepAngle * D2G)
 		, frontPanelHeight * 0.1 + sHeight, width / 2);
@@ -1157,16 +1334,22 @@ void drawJeepBody(float length, float width, float lHeight, float sHeight, float
 	
 	glBegin(GL_POLYGON);
 	glNormal3f(0, 0, 1);
+	glTexCoord2f(0, 0);
 	glVertex3f(0, lHeight - edgeCurveRadius, width / 2);
+	glTexCoord2f(0, 1);
 	glVertex3f(edgeCurveRadius * sin(steepAngle * D2G), lHeight - edgeCurveRadius * (1 - cos(steepAngle * D2G)), width / 2);
+	glTexCoord2f(1, 1);
 	glVertex3f(edgeCurveRadius * sin(steepAngle * D2G) + (lHeight - sHeight) * tan((90 - steepAngle) * D2G) - frontPanelHeight * 0.1 / tan(steepAngle * D2G)
 		, frontPanelHeight * 0.1 + sHeight, width / 2);
+	glTexCoord2f(1, 0);
 	glVertex3f((lHeight - edgeCurveRadius - frontPanelHeight * 0.1 - sHeight) / tan(steepAngle * D2G)
 		, frontPanelHeight * 0.1 + sHeight, width / 2);
 	glEnd();
-
+	
 	drawFan(0, lHeight - edgeCurveRadius, width / 2, edgeCurveRadius, steepAngle, 20, 1);
 	glPopMatrix();
+	glDisable(GL_TEXTURE_2D);
+	glEnable(GL_LIGHTING);
 
 	//draw jeep front
 
@@ -1174,7 +1357,7 @@ void drawJeepBody(float length, float width, float lHeight, float sHeight, float
 	glTranslatef(edgeCurveRadius * sin(steepAngle * D2G) + (lHeight - sHeight) * tan((90 - steepAngle) * D2G), sHeight - edgeRadius, 0);
 	drawJeepFront(length * 0.8, width, edgeRadius, sHeight, sHeight - rimHeight, edgeRadius);
 	glPopMatrix();
-
+	
 	//draw rims
 	glPushMatrix();
 	glTranslatef(-length + edgeCurveRadius + rimLength , 0, width / 2 + width / 8 + edgeRadius / 2);
@@ -1207,13 +1390,22 @@ void drawJeepBody(float length, float width, float lHeight, float sHeight, float
 	setupMaterial(qaTyre, qaTyre, qaBlack, 60.0);
 
 	float rimFullLength = rimLength + edgeCurveRadius * sin(steepAngle * D2G) + rimHeight * tan((90 - steepAngle) * D2G);
+	glDisable(GL_LIGHTING);
+	glEnable(GL_TEXTURE_2D);
+	loadTextures();
+
+	glBindTexture(GL_TEXTURE_2D, floorTex.texID);
 
 	glBegin(GL_POLYGON);
 	glColor3f(0.8, 0.8, 0.8);
 	glNormal3f(0, 0, 1);
+	glTexCoord2f(0, 0);
 	glVertex3f(-windowLength - edgeRadius, 0, width / 2);
+	glTexCoord2f(0, 1);
 	glVertex3f(-windowLength - edgeRadius, rimHeight, width / 2);
+	glTexCoord2f(1, 1);
 	glVertex3f(-length + edgeCurveRadius + rimLength + edgeCurveRadius * sin(steepAngle * D2G), rimHeight, width / 2);
+	glTexCoord2f(1, 0);
 	glVertex3f(-length + rimFullLength + edgeCurveRadius * sin(steepAngle * D2G), 0, width / 2);
 	glEnd();
 
@@ -1222,9 +1414,13 @@ void drawJeepBody(float length, float width, float lHeight, float sHeight, float
 	glBegin(GL_POLYGON);
 	glColor3f(0.8, 0.8, 0.8);
 	glNormal3f(0, 0, 1);
+	glTexCoord2f(0, 0);
 	glVertex3f(-windowLength - edgeRadius, 0, width / 2);
+	glTexCoord2f(0, 1);
 	glVertex3f(-windowLength - edgeRadius, rimHeight, width / 2);
+	glTexCoord2f(1, 1);
 	glVertex3f(-length + edgeCurveRadius + rimLength + edgeCurveRadius * sin(steepAngle * D2G), rimHeight, width / 2);
+	glTexCoord2f(1, 0);
 	glVertex3f(-length + rimFullLength + edgeCurveRadius * sin(steepAngle * D2G), 0, width / 2);
 	glEnd();
 	glPopMatrix();
@@ -1232,21 +1428,29 @@ void drawJeepBody(float length, float width, float lHeight, float sHeight, float
 
 	glBegin(GL_POLYGON);
 	glNormal3f(-1/ sqrt(2), -1 / sqrt(2),0);
+	glTexCoord2f(0, 0);
 	glVertex3f(-length + rimFullLength + edgeCurveRadius * sin(steepAngle * D2G), 0, width / 2);
+	glTexCoord2f(0, 1);
 	glVertex3f(-length + edgeCurveRadius + rimLength + edgeCurveRadius * sin(steepAngle * D2G), rimHeight, width / 2);
+	glTexCoord2f(1, 1);
 	glVertex3f(-length + edgeCurveRadius + rimLength + edgeCurveRadius * sin(steepAngle * D2G), rimHeight, -width / 2);
+	glTexCoord2f(1, 0);
 	glVertex3f(-length + rimFullLength + edgeCurveRadius * sin(steepAngle * D2G), 0, -width / 2);
 	glEnd();
-
+	
 	//X position of front rim
 	float frontRimX = length * 0.8 - rimLength + frontPanelLength;
 	float frontRimX2 = frontRimX - rimFullLength + rimLength + edgeCurveRadius * sin(steepAngle * D2G);
 	glBegin(GL_POLYGON);
 	glColor3f(0.8, 0.8, 0.8);
 	glNormal3f(0, 0, 1);
+	glTexCoord2f(0, 0);
 	glVertex3f(edgeCurveRadius * sin(steepAngle * D2G) + (lHeight - sHeight) * tan((90 - steepAngle) * D2G), 0, width / 2);
+	glTexCoord2f(0, 1);
 	glVertex3f(edgeCurveRadius * sin(steepAngle * D2G) + (lHeight - sHeight) * tan((90 - steepAngle) * D2G), rimHeight, width / 2);
+	glTexCoord2f(1, 1);
 	glVertex3f(frontRimX, rimHeight, width / 2);
+	glTexCoord2f(1, 0);
 	glVertex3f(frontRimX2, 0, width / 2);
 	glEnd();
 
@@ -1256,9 +1460,13 @@ void drawJeepBody(float length, float width, float lHeight, float sHeight, float
 	glBegin(GL_POLYGON);
 	glColor3f(0.8, 0.8, 0.8);
 	glNormal3f(0, 0, 1);
+	glTexCoord2f(0, 0);
 	glVertex3f(edgeCurveRadius * sin(steepAngle * D2G) + (lHeight - sHeight) * tan((90 - steepAngle) * D2G), 0, width / 2);
+	glTexCoord2f(0, 1);
 	glVertex3f(edgeCurveRadius * sin(steepAngle * D2G) + (lHeight - sHeight) * tan((90 - steepAngle) * D2G), rimHeight, width / 2);
+	glTexCoord2f(1, 1);
 	glVertex3f(frontRimX, rimHeight, width / 2);
+	glTexCoord2f(1, 0);
 	glVertex3f(frontRimX2, 0, width / 2);
 	glEnd();
 	glPopMatrix();
@@ -1266,12 +1474,16 @@ void drawJeepBody(float length, float width, float lHeight, float sHeight, float
 	glBegin(GL_POLYGON);
 	glColor3f(0.8, 0.8, 0.8);
 	glNormal3f(1 / sqrt(2), -1 / sqrt(2), 0);
+	glTexCoord2f(0, 0);
 	glVertex3f(frontRimX + rimLength - rimFullLength, 0, width / 2);
+	glTexCoord2f(0, 1);
 	glVertex3f(frontRimX - edgeCurveRadius * sin(steepAngle * D2G), rimHeight, width / 2);
+	glTexCoord2f(1, 1);
 	glVertex3f(frontRimX - edgeCurveRadius * sin(steepAngle * D2G), rimHeight, -width / 2);
+	glTexCoord2f(1, 0);
 	glVertex3f(frontRimX + rimLength - rimFullLength, 0, -width / 2);
 	glEnd();
-	
+
 	//bottom
 	glBegin(GL_POLYGON);
 	glNormal3f(0, -1, 0);
@@ -1289,6 +1501,9 @@ void drawJeepBody(float length, float width, float lHeight, float sHeight, float
 	glVertex3f(-length + rimFullLength + edgeCurveRadius * sin(steepAngle * D2G), rimHeight, -width / 2);
 	glVertex3f(-length + edgeRadius + edgeCurveRadius, rimHeight, -width / 2);
 	glEnd();
+
+	glDisable(GL_TEXTURE_2D);
+	glEnable(GL_LIGHTING);
 }
 
 void view() {
@@ -1540,7 +1755,6 @@ int main(int argc, char* argv[])
 	RimPart1.CreateRimPart1(2, 1.8, 0.75, nX);
 	RimPart2.CreateRimPart2(1.8, 0.5, 0.3, nX);
 	RimPart3.CreateRimPart2(1.8, 0.5, 0.0, nX);
-	Cl.CreateCylinder2(32 * nX, wheelAxisLength, 0.4);
 	//cal normvector
 	TyrePart1.CalculateFacesNorm();
 	TyrePart2.CalculateFacesNorm();
@@ -1558,7 +1772,6 @@ int main(int argc, char* argv[])
 	setUpJeepFront(32,40,2,25,10,2);
 	setUpRIM(18, 10, 15, 0, 2, 3, 75);
 	setUpJeepBody(40, 40, 44, 25, 18, 15, 2, 3, 75);
-
 	//set up obstacles
 	pillarObstacle.CreateCuboid(40, 80, 40);
 	//set up coordinates for jeep 
