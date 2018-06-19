@@ -107,7 +107,7 @@ float qaWhite[] = { 1.0,1.0,1.0,1.0 };
 float qaPupple[] = { 1.0,0.0,1.0,1.0 };
 float qaGray[] = { 0.5,0.5,0.5,1.0 };
 float qaTyre[] = { 0.2,0.2,0.2,1.0 };
-float qaGray2[] = { 0.95,0.95,0.95,1.0 };
+float qaGray2[] = { 0.75,0.75,0.75,1.0 };
 
 float leftDoorAngle = 0;
 float rightDoorAngle = 0;
@@ -134,6 +134,7 @@ Mesh pillarObstacle;
 
 //texture
 Texture   floorTex;
+Texture   streetTex;
 
 //functions for setting up jeep body parts
 void setUpJeepBar(float length, float height, float radius) {
@@ -198,6 +199,24 @@ void loadTextures(void) {
 
 		if (floorTex.imageData)
 			free(floorTex.imageData);
+	}
+}
+void loadStreetTextures(void) {
+	char s[] = "street.tga";
+	bool status = LoadTGA(&streetTex, s);
+	if (status) {
+		glGenTextures(1, &streetTex.texID);
+		glBindTexture(GL_TEXTURE_2D, streetTex.texID);
+		glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, streetTex.width,
+			streetTex.height, 0,
+			GL_RGB, GL_UNSIGNED_BYTE, streetTex.imageData);
+
+		if (streetTex.imageData)
+			free(streetTex.imageData);
 	}
 }
 
@@ -356,7 +375,7 @@ void drawHaftWheel() {
 	//Draw
 	drawTyrePart2();
 	//Setup Material
-	setupMaterial(qaGray2, qaGray2, qaWhite, 60.0);
+	setupMaterial(qaGray2, qaGray2, qaWhite, 120.0);
 	//Draw
 	drawRimPart1();
 	glPopMatrix();
@@ -367,7 +386,7 @@ void drawWheel() {
 	glScalef(-1, 1, 1);
 	drawHaftWheel();
 	//Setup Material
-	setupMaterial(qaGray2, qaGray2, qaWhite, 60.0);
+	setupMaterial(qaGray2, qaGray2, qaWhite, 120.0);
 	glPopMatrix();
 	//Draw
 	drawRimPart2();
@@ -609,20 +628,15 @@ void drawFront(float length, float height, float radius) {
 }
 
 void drawFloor() {
-	//glDisable(GL_LIGHTING);
+	glDisable(GL_LIGHTING);
 	glEnable(GL_TEXTURE_2D);
-
 	glColor4f(1, 1, 1, 1.0);
 
 	glBegin(GL_QUADS);
-	glTexCoord2f(0, 0);
-	glVertex3f(10, 0, 10);
-	glTexCoord2f(0, 1);
-	glVertex3f(10, 0, -10);
-	glTexCoord2f(1, 1);
-	glVertex3f(-10, 0, -10);
-	glTexCoord2f(1, 0);
-	glVertex3f(-10, 0, 10);
+	glTexCoord2f(0, 0); glVertex3f(-1000.f, 0, -1000.f);
+	glTexCoord2f(0, 1); glVertex3f(-1000.f, 0, 1000.f);
+	glTexCoord2f(1, 1); glVertex3f(1000.f, 0, 1000.f);
+	glTexCoord2f(1, 0); glVertex3f(1000.f, 0, -1000.f);
 	glEnd();
 
 	glDisable(GL_TEXTURE_2D);
@@ -633,7 +647,7 @@ void drawFloor() {
 void drawJeepFront(float length, float width, float EdgeRadius,float sHeight, float height, float deltaHeight) {
 	setupMaterial(qaGray2, qaGray2, qaWhite, 60.0);
 	glEnable(GL_TEXTURE_2D);
-	loadTextures();
+	
 
 	glBindTexture(GL_TEXTURE_2D, floorTex.texID);
 	glColor4f(1, 1, 1, 1.0);
@@ -1672,11 +1686,14 @@ void myDisplay()
 	drawObstacles();
 
 	glPushMatrix();
-	glTranslatef(movement.currentX, 0, movement.currentZ);
+	glTranslatef(movement.currentX, wheelRadius+1, movement.currentZ);
 	turnJeep();
 	drawJeep();
 	glPopMatrix();
 
+	glBindTexture(GL_TEXTURE_2D, streetTex.texID);
+	drawFloor();
+	glBindTexture(GL_TEXTURE_2D, floorTex.texID);
 	glFlush();
     glutSwapBuffers();
 }
@@ -1709,7 +1726,7 @@ void myInit()
 	glShadeModel(GL_SMOOTH);
 	glLightModeli(GL_LIGHT_MODEL_LOCAL_VIEWER, GL_TRUE);
 	glEnable(GL_DEPTH_TEST);
-
+	
 	//Set light intensity and color
 	float qaAmbientLight[] = { 0.2,0.2,0.2,1.0 };
 	float qaDiffuseLight[] = { 0.8,0.8,0.8,1.0 };
@@ -1730,6 +1747,7 @@ void myInit()
 
 	glEnable(GL_TEXTURE_2D);
 	loadTextures();
+	loadStreetTextures();
 	glBindTexture(GL_TEXTURE_2D, floorTex.texID);
 }
 
