@@ -10,7 +10,7 @@
 
 #include <stdio.h>										// Standard I/O header 
 #include <stdlib.h>
-#include <gl/glut.h>
+#include <glut.h>
 
 typedef	struct
 {
